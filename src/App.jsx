@@ -8,6 +8,7 @@ import { PdfDocument } from './components/PdfDocument';
 // GANTI DENGAN URL WEB APP GAS ANDA
 const GAS_URL = "https://script.google.com/macros/s/AKfycbzE9tGyPMkDNRBhkall_ldKAX6BsqX9d_NiNIz3YAdatOcu4RYTzrxV1WGQVXkRIaPt/exec";
 
+
 export default function App() {
   const [nama, setNama] = useState('');
   const [lokasi, setLokasi] = useState('');
