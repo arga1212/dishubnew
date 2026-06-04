@@ -8,7 +8,6 @@ import { PdfDocument } from './components/PdfDocument';
 // GANTI DENGAN URL WEB APP GAS ANDA
 const GAS_URL = "https://script.google.com/macros/s/AKfycbzE9tGyPMkDNRBhkall_ldKAX6BsqX9d_NiNIz3YAdatOcu4RYTzrxV1WGQVXkRIaPt/exec";
 
-
 export default function App() {
   const [nama, setNama] = useState('');
   const [lokasi, setLokasi] = useState('');
@@ -38,16 +37,28 @@ export default function App() {
   };
 
   const startWebcam = async (mode = facingMode) => {
+    const finalMode = typeof mode === 'string' ? mode : facingMode;
     try {
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
       }
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: mode } 
-      });
+      
+      let stream;
+      try {
+        // Try to force the specific camera (rear/front)
+        stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: { exact: finalMode } } 
+        });
+      } catch (fallbackErr) {
+        // Fallback if the specific camera is not found (like on PC)
+        stream = await navigator.mediaDevices.getUserMedia({ 
+          video: true 
+        });
+      }
+
       streamRef.current = stream;
       setShowWebcam(true);
-      setFacingMode(mode);
+      setFacingMode(finalMode);
       setTimeout(() => {
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
