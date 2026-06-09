@@ -132,8 +132,8 @@ export default function App() {
   };
 
   const handleGenerate = async () => {
-    if (!nama || !croppedImage || !lokasiParkir || !alamatParkir || !fotoRambu) {
-      alert("Mohon lengkapi semua data wajib (Nama, Lokasi, Alamat, Foto Petugas, dan Foto Rambu)!");
+    if (!nama || !croppedImage || !lokasiParkir || !alamatParkir || !fotoRambu || !fotoKTA) {
+      alert("Mohon lengkapi semua data wajib (Nama, Lokasi, Alamat, Foto Petugas, Foto Rambu, dan KTA Jukir)!");
       return;
     }
     setLoading(true);
@@ -232,7 +232,7 @@ export default function App() {
             {renderPhotoSection("2. Rambu Digital (Wajib)", "rambu", fileInputRambuRef, fotoRambu, true)}
           </div>
           <div className="w-full">
-            {renderPhotoSection("3. KTA Jukir (Opsional)", "kta", fileInputKTARef, fotoKTA, false)}
+            {renderPhotoSection("3. KTA Jukir (Wajib)", "kta", fileInputKTARef, fotoKTA, true)}
           </div>
 
           {image && (
@@ -297,7 +297,7 @@ export default function App() {
 
           <div className="pt-4 space-y-3">
             <button 
-              disabled={loading || !nama || !croppedImage || !lokasiParkir || !alamatParkir || !fotoRambu}
+              disabled={loading || !nama || !croppedImage || !lokasiParkir || !alamatParkir || !fotoRambu || !fotoKTA}
               onClick={handleGenerate}
               className="w-full bg-[#1e3a8a] text-white py-5 rounded-[1.5rem] font-black uppercase tracking-[0.2em] shadow-xl hover:bg-blue-950 hover:-translate-y-1 transition-all disabled:opacity-20 disabled:translate-y-0"
             >
