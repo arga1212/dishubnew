@@ -267,7 +267,7 @@ export default function App() {
                 type="text" maxLength={15} value={nama}
                 onChange={(e) => setNama(e.target.value.toUpperCase())}
                 className="w-full p-4 bg-slate-50 border-2 border-transparent focus:border-[#1e3a8a] focus:bg-white transition-all rounded-2xl mt-1 font-black text-lg text-blue-950 uppercase"
-                placeholder="CONTOH: PAK EKO"
+                placeholder="CONTOH: EKO SUSILO"
               />
               <div className={`absolute right-4 bottom-4 text-[10px] font-black ${nama.length >= 15 ? 'text-red-500' : 'text-slate-300'}`}>
                 {nama.length}/15
