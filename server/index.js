@@ -147,9 +147,7 @@ app.post('/api/submissions', requireBearerAuth, async (req, res) => {
       !lokasiParkir ||
       !alamatParkir ||
       !pdfBase64 ||
-      !fotoPetugasBase64 ||
-      !fotoRambuBase64 ||
-      !fotoKTABase64
+      !fotoPetugasBase64
     ) {
       return res.status(400).json({ message: 'Field wajib diisi ada yang masih kosong.' });
     }
@@ -158,13 +156,17 @@ app.post('/api/submissions', requireBearerAuth, async (req, res) => {
 
     const pdfFilename = writeFileWithUuid(decodeBase64ToBuffer(pdfBase64), 'pdf');
     const fotoPetugasFilename = writeFileWithUuid(decodeBase64ToBuffer(fotoPetugasBase64), 'jpg');
-    const fotoRambuFilename = writeFileWithUuid(decodeBase64ToBuffer(fotoRambuBase64), 'jpg');
-    const fotoKtaFilename = writeFileWithUuid(decodeBase64ToBuffer(fotoKTABase64), 'jpg');
+    const fotoRambuFilename = fotoRambuBase64
+      ? writeFileWithUuid(decodeBase64ToBuffer(fotoRambuBase64), 'jpg')
+      : '';
+    const fotoKtaFilename = fotoKTABase64
+      ? writeFileWithUuid(decodeBase64ToBuffer(fotoKTABase64), 'jpg')
+      : '';
 
     const pdfFileUrl = `${publicApiBaseUrl}/uploads/${pdfFilename}`;
     const fotoPetugasFileUrl = `${publicApiBaseUrl}/uploads/${fotoPetugasFilename}`;
-    const fotoRambuFileUrl = `${publicApiBaseUrl}/uploads/${fotoRambuFilename}`;
-    const fotoKtaFileUrl = `${publicApiBaseUrl}/uploads/${fotoKtaFilename}`;
+    const fotoRambuFileUrl = fotoRambuFilename ? `${publicApiBaseUrl}/uploads/${fotoRambuFilename}` : '';
+    const fotoKtaFileUrl = fotoKtaFilename ? `${publicApiBaseUrl}/uploads/${fotoKtaFilename}` : '';
 
     await insertSubmission({
       id: submissionId,

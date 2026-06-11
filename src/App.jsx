@@ -2,7 +2,7 @@ import { useState, useCallback, useRef } from 'react';
 import { pdf } from '@react-pdf/renderer';
 import Cropper from 'react-easy-crop';
 import { Camera, Upload, RotateCcw, FileCheck, Loader2, CheckCircle2, X, SwitchCamera, Image as ImageIcon } from 'lucide-react';
-import { getCroppedImg } from './utils/imageHelpers';
+import { compressImageDataUrl, getCroppedImg } from './utils/imageHelpers';
 import { PdfDocument } from './components/PdfDocument';
 import { DataPage } from './components/DataPage';
 
@@ -43,7 +43,7 @@ export default function App() {
     }
   }, [image]);
 
-  const handleFileUpload = (e, type) => {
+  const handleFileUpload = async (e, type) => {
     const file = e.target.files[0];
     if (!file) return;
     
@@ -53,7 +53,7 @@ export default function App() {
     reader.onload = (event) => {
       const img = new Image();
       img.src = event.target.result;
-      img.onload = () => {
+      img.onload = async () => {
         const canvas = document.createElement('canvas');
         const MAX_WIDTH = 1200;
         let scaleSize = 1;
@@ -64,11 +64,15 @@ export default function App() {
         canvas.height = img.height * scaleSize;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        const compressed = await compressImageDataUrl(canvas.toDataURL('image/jpeg', 0.8), {
+          maxWidth: 1280,
+          maxHeight: 1280,
+          maxBytes: 700 * 1024,
+        });
         
-        if (type === 'petugas') setImage(dataUrl);
-        else if (type === 'rambu') setFotoRambu(dataUrl);
-        else if (type === 'kta') setFotoKTA(dataUrl);
+        if (type === 'petugas') setImage(compressed);
+        else if (type === 'rambu') setFotoRambu(compressed);
+        else if (type === 'kta') setFotoKTA(compressed);
       };
     };
   };
@@ -109,14 +113,18 @@ export default function App() {
     startWebcam(activeWebcamType, newMode);
   };
 
-  const captureWebcam = () => {
+  const captureWebcam = async () => {
     if (videoRef.current) {
       const canvas = document.createElement('canvas');
       canvas.width = videoRef.current.videoWidth;
       canvas.height = videoRef.current.videoHeight;
       const ctx = canvas.getContext('2d');
       ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+      const dataUrl = await compressImageDataUrl(canvas.toDataURL('image/jpeg', 0.8), {
+        maxWidth: 1280,
+        maxHeight: 1280,
+        maxBytes: 700 * 1024,
+      });
       
       if (activeWebcamType === 'petugas') setImage(dataUrl);
       else if (activeWebcamType === 'rambu') setFotoRambu(dataUrl);
@@ -135,8 +143,8 @@ export default function App() {
   };
 
   const handleGenerate = async () => {
-    if (!nama || !croppedImage || !lokasiParkir || !alamatParkir || !fotoRambu || !fotoKTA) {
-      alert("Mohon lengkapi semua data wajib (Nama, Lokasi, Alamat, Foto Petugas, Foto Rambu, dan KTA Jukir)!");
+    if (!nama || !croppedImage || !lokasiParkir || !alamatParkir) {
+      alert("Mohon lengkapi semua data wajib (Nama, Lokasi, Alamat, dan Foto Petugas)!");
       return;
     }
     if (!API_AUTH_TOKEN) {
@@ -145,14 +153,34 @@ export default function App() {
     }
     setLoading(true);
     try {
-      const blob = await pdf(<PdfDocument name={nama} photo={croppedImage} />).toBlob();
+      const optimizedPetugasImage = await compressImageDataUrl(croppedImage, {
+        maxWidth: 1100,
+        maxHeight: 1100,
+        maxBytes: 450 * 1024,
+      });
+      const optimizedRambuImage = fotoRambu
+        ? await compressImageDataUrl(fotoRambu, {
+            maxWidth: 1280,
+            maxHeight: 1280,
+            maxBytes: 550 * 1024,
+          })
+        : null;
+      const optimizedKtaImage = fotoKTA
+        ? await compressImageDataUrl(fotoKTA, {
+            maxWidth: 1280,
+            maxHeight: 1280,
+            maxBytes: 550 * 1024,
+          })
+        : null;
+
+      const blob = await pdf(<PdfDocument name={nama} photo={optimizedPetugasImage} />).toBlob();
       const reader = new FileReader();
       reader.readAsDataURL(blob);
       reader.onloadend = async () => {
         const base64data = reader.result.split(',')[1];
-        const petugasBase64 = croppedImage.split(',')[1];
-        const rambuBase64 = fotoRambu.split(',')[1];
-        const ktaBase64 = fotoKTA ? fotoKTA.split(',')[1] : null;
+        const petugasBase64 = optimizedPetugasImage.split(',')[1];
+        const rambuBase64 = optimizedRambuImage ? optimizedRambuImage.split(',')[1] : null;
+        const ktaBase64 = optimizedKtaImage ? optimizedKtaImage.split(',')[1] : null;
 
         const response = await fetch(`${API_BASE_URL}/api/submissions`, {
           method: 'POST',
@@ -253,10 +281,10 @@ export default function App() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {renderPhotoSection("1. Foto Petugas (Wajib)", "petugas", fileInputPetugasRef, image, true)}
-            {renderPhotoSection("2. Rambu Digital (Wajib)", "rambu", fileInputRambuRef, fotoRambu, true)}
+            {renderPhotoSection("2. Rambu Digital (Opsional)", "rambu", fileInputRambuRef, fotoRambu, false)}
           </div>
           <div className="w-full">
-            {renderPhotoSection("3. KTA Jukir (Wajib)", "kta", fileInputKTARef, fotoKTA, true)}
+            {renderPhotoSection("3. KTA Jukir (Opsional)", "kta", fileInputKTARef, fotoKTA, false)}
           </div>
 
           {image && (
@@ -321,7 +349,7 @@ export default function App() {
 
           <div className="pt-4 space-y-3">
             <button 
-              disabled={loading || !nama || !croppedImage || !lokasiParkir || !alamatParkir || !fotoRambu || !fotoKTA}
+              disabled={loading || !nama || !croppedImage || !lokasiParkir || !alamatParkir}
               onClick={handleGenerate}
               className="w-full bg-[#1e3a8a] text-white py-5 rounded-[1.5rem] font-black uppercase tracking-[0.2em] shadow-xl hover:bg-blue-950 hover:-translate-y-1 transition-all disabled:opacity-20 disabled:translate-y-0"
             >
