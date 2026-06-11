@@ -1,13 +1,16 @@
-import React, { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { pdf } from '@react-pdf/renderer';
 import Cropper from 'react-easy-crop';
 import { Camera, Upload, RotateCcw, FileCheck, Loader2, CheckCircle2, X, SwitchCamera, Image as ImageIcon } from 'lucide-react';
 import { getCroppedImg } from './utils/imageHelpers';
 import { PdfDocument } from './components/PdfDocument';
+import { DataPage } from './components/DataPage';
 
-// GANTI DENGAN URL WEB APP GAS ANDA
-const GAS_URL = "https://script.google.com/macros/s/AKfycbzE9tGyPMkDNRBhkall_ldKAX6BsqX9d_NiNIz3YAdatOcu4RYTzrxV1WGQVXkRIaPt/exec";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8787";
+const API_AUTH_TOKEN = import.meta.env.VITE_API_AUTH_TOKEN || "";
 export default function App() {
+  const isDataPage = window.location.pathname === '/data';
+
   const [nama, setNama] = useState('');
   const [lokasiParkir, setLokasiParkir] = useState('');
   const [alamatParkir, setAlamatParkir] = useState('');
@@ -82,7 +85,7 @@ export default function App() {
         stream = await navigator.mediaDevices.getUserMedia({ 
           video: { facingMode: { exact: finalMode } } 
         });
-      } catch (fallbackErr) {
+      } catch {
         stream = await navigator.mediaDevices.getUserMedia({ 
           video: true 
         });
@@ -96,7 +99,7 @@ export default function App() {
           videoRef.current.srcObject = stream;
         }
       }, 100);
-    } catch (err) {
+    } catch {
       alert("Akses kamera ditolak atau tidak tersedia di perangkat ini.");
     }
   };
@@ -136,6 +139,10 @@ export default function App() {
       alert("Mohon lengkapi semua data wajib (Nama, Lokasi, Alamat, Foto Petugas, Foto Rambu, dan KTA Jukir)!");
       return;
     }
+    if (!API_AUTH_TOKEN) {
+      alert('Konfigurasi token API belum di-set. Isi VITE_API_AUTH_TOKEN di .env');
+      return;
+    }
     setLoading(true);
     try {
       const blob = await pdf(<PdfDocument name={nama} photo={croppedImage} />).toBlob();
@@ -147,9 +154,12 @@ export default function App() {
         const rambuBase64 = fotoRambu.split(',')[1];
         const ktaBase64 = fotoKTA ? fotoKTA.split(',')[1] : null;
 
-        await fetch(GAS_URL, {
+        const response = await fetch(`${API_BASE_URL}/api/submissions`, {
           method: 'POST',
-          mode: 'no-cors',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${API_AUTH_TOKEN}`
+          },
           body: JSON.stringify({ 
             nama, 
             lokasiParkir, 
@@ -160,6 +170,10 @@ export default function App() {
             fotoKTABase64: ktaBase64
           })
         });
+
+        if (!response.ok) {
+          throw new Error('Upload ke server gagal');
+        }
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
@@ -168,7 +182,7 @@ export default function App() {
         setLoading(false);
         setSukses(true);
       };
-    } catch (err) {
+    } catch {
       setLoading(false);
       alert('Gagal generate PDF. Coba lagi.');
     }
@@ -211,6 +225,10 @@ export default function App() {
     </div>
   );
 
+  if (isDataPage) {
+    return <DataPage apiBaseUrl={API_BASE_URL} apiAuthToken={API_AUTH_TOKEN} />;
+  }
+
   return (
     <div className="min-h-screen bg-[#f1f5f9] p-4 md:p-10 font-sans text-slate-900">
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12">
@@ -225,6 +243,12 @@ export default function App() {
               <h1 className="text-2xl font-black text-slate-900 leading-none uppercase">Dishub Surabaya</h1>
               <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mt-1">Card Generator v2.5</p>
             </div>
+            <a
+              href="/data"
+              className="ml-auto rounded-xl bg-slate-900 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white hover:bg-slate-700 transition"
+            >
+              Data
+            </a>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -344,7 +368,7 @@ export default function App() {
               <CheckCircle2 size={48} className="text-emerald-500" strokeWidth={1.5} />
             </div>
             <h2 className="text-2xl font-black text-slate-900 uppercase tracking-wide">Berhasil!</h2>
-            <p className="text-slate-500 text-sm font-medium">Data <span className="font-black text-slate-700">{nama}</span> beserta foto telah disimpan ke cloud.</p>
+            <p className="text-slate-500 text-sm font-medium">Data <span className="font-black text-slate-700">{nama}</span> beserta foto sudah tersimpan aman di server VPS.</p>
             <button
               onClick={() => { setSukses(false); window.location.reload(); }}
               className="mt-2 w-full bg-[#1e3a8a] text-white py-4 rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-blue-950 transition"
