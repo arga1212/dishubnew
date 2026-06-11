@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -6,6 +6,9 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import { initializeDatabase, insertSubmission, getSubmissions, getSubmissionById, getCsvPath } from './db.js';
+
+const projectRoot = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+dotenv.config({ path: path.join(projectRoot, '.env') });
 
 const app = express();
 const port = Number(process.env.PORT || 8787);
