@@ -136,6 +136,10 @@ app.post('/api/submissions', requireBearerAuth, async (req, res) => {
       nama,
       lokasiParkir,
       alamatParkir,
+      latitude,
+      longitude,
+      locationAccuracy,
+      locationCapturedAt,
       pdfBase64,
       fotoPetugasBase64,
       fotoRambuBase64,
@@ -146,10 +150,33 @@ app.post('/api/submissions', requireBearerAuth, async (req, res) => {
       !nama ||
       !lokasiParkir ||
       !alamatParkir ||
+      latitude === undefined ||
+      latitude === null ||
+      latitude === '' ||
+      longitude === undefined ||
+      longitude === null ||
+      longitude === '' ||
       !pdfBase64 ||
       !fotoPetugasBase64
     ) {
       return res.status(400).json({ message: 'Field wajib diisi ada yang masih kosong.' });
+    }
+
+    const parsedLatitude = Number(latitude);
+    const parsedLongitude = Number(longitude);
+    const parsedLocationAccuracy = locationAccuracy === undefined || locationAccuracy === ''
+      ? ''
+      : Number(locationAccuracy);
+
+    if (
+      !Number.isFinite(parsedLatitude) ||
+      !Number.isFinite(parsedLongitude) ||
+      parsedLatitude < -90 ||
+      parsedLatitude > 90 ||
+      parsedLongitude < -180 ||
+      parsedLongitude > 180
+    ) {
+      return res.status(400).json({ message: 'Titik koordinat tidak valid.' });
     }
 
     const submissionId = crypto.randomUUID();
@@ -173,6 +200,10 @@ app.post('/api/submissions', requireBearerAuth, async (req, res) => {
       nama,
       lokasiParkir,
       alamatParkir,
+      latitude: parsedLatitude,
+      longitude: parsedLongitude,
+      locationAccuracy: Number.isFinite(parsedLocationAccuracy) ? parsedLocationAccuracy : '',
+      locationCapturedAt: locationCapturedAt || '',
       pdfFilename: pdfFileUrl,
       fotoPetugasFilename: fotoPetugasFileUrl,
       fotoRambuFilename: fotoRambuFileUrl,

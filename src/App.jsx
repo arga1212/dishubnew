@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { pdf } from '@react-pdf/renderer';
 import Cropper from 'react-easy-crop';
-import { Camera, Upload, RotateCcw, FileCheck, Loader2, CheckCircle2, X, SwitchCamera, Image as ImageIcon } from 'lucide-react';
+import { Camera, Upload, RotateCcw, FileCheck, Loader2, CheckCircle2, X, SwitchCamera, Image as ImageIcon, MapPin } from 'lucide-react';
 import { compressImageDataUrl, getCroppedImg } from './utils/imageHelpers';
 import { PdfDocument } from './components/PdfDocument';
 import { DataPage } from './components/DataPage';
@@ -25,6 +25,10 @@ export default function App() {
 
   const [loading, setLoading] = useState(false);
   const [sukses, setSukses] = useState(false);
+  const [validationErrors, setValidationErrors] = useState([]);
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [locationError, setLocationError] = useState('');
+  const [coordinates, setCoordinates] = useState(null);
   
   const [activeWebcamType, setActiveWebcamType] = useState(null); // 'petugas', 'rambu', 'kta'
   const [facingMode, setFacingMode] = useState("environment");
@@ -142,9 +146,52 @@ export default function App() {
     setActiveWebcamType(null);
   };
 
+  const handleGetLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationError('GPS/lokasi tidak tersedia di perangkat ini.');
+      return;
+    }
+
+    setLocationLoading(true);
+    setLocationError('');
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setCoordinates({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+          capturedAt: new Date().toISOString(),
+        });
+        setLocationLoading(false);
+      },
+      (error) => {
+        const message = error.code === error.PERMISSION_DENIED
+          ? 'Izin lokasi ditolak. Aktifkan izin lokasi untuk menyimpan titik koordinat.'
+          : 'Gagal mengambil lokasi. Pastikan GPS aktif lalu coba lagi.';
+
+        setLocationError(message);
+        setLocationLoading(false);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 0,
+      }
+    );
+  };
+
   const handleGenerate = async () => {
-    if (!nama || !croppedImage || !lokasiParkir || !alamatParkir) {
-      alert("Mohon lengkapi semua data wajib (Nama, Lokasi, Alamat, dan Foto Petugas)!");
+    const missingFields = [
+      !nama && 'Nama Petugas',
+      !croppedImage && 'Foto Petugas',
+      !lokasiParkir && 'Lokasi Parkir',
+      !alamatParkir && 'Alamat Lokasi',
+      !coordinates && 'Titik Koordinat Lokasi',
+    ].filter(Boolean);
+
+    if (missingFields.length > 0) {
+      setValidationErrors(missingFields);
       return;
     }
     if (!API_AUTH_TOKEN) {
@@ -192,6 +239,10 @@ export default function App() {
             nama, 
             lokasiParkir, 
             alamatParkir, 
+            latitude: coordinates.latitude,
+            longitude: coordinates.longitude,
+            locationAccuracy: coordinates.accuracy,
+            locationCapturedAt: coordinates.capturedAt,
             pdfBase64: base64data,
             fotoPetugasBase64: petugasBase64,
             fotoRambuBase64: rambuBase64,
@@ -345,13 +396,45 @@ export default function App() {
                 placeholder="CONTOH: JL. A. YANI NO 10"
               />
             </div>
+
+            <div className="bg-slate-50 rounded-2xl border border-slate-100 p-4">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                    Titik Koordinat Lokasi <span className="text-red-500">*</span>
+                  </label>
+                  <p className="mt-1 text-xs font-bold text-slate-500">
+                    {coordinates
+                      ? `${coordinates.latitude.toFixed(6)}, ${coordinates.longitude.toFixed(6)}`
+                      : 'Belum mengambil titik lokasi'}
+                  </p>
+                  {coordinates && (
+                    <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-emerald-600">
+                      Akurasi ±{Math.round(coordinates.accuracy)} meter
+                    </p>
+                  )}
+                  {locationError && (
+                    <p className="mt-1 text-xs font-bold text-red-500">{locationError}</p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={handleGetLocation}
+                  disabled={locationLoading}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-xs font-black uppercase tracking-wider text-white hover:bg-emerald-700 transition disabled:opacity-50"
+                >
+                  {locationLoading ? <Loader2 className="animate-spin" size={16} /> : <MapPin size={16} />}
+                  {coordinates ? 'Update Lokasi' : 'Ambil Lokasi'}
+                </button>
+              </div>
+            </div>
           </div>
 
           <div className="pt-4 space-y-3">
             <button 
-              disabled={loading || !nama || !croppedImage || !lokasiParkir || !alamatParkir}
+              disabled={loading}
               onClick={handleGenerate}
-              className="w-full bg-[#1e3a8a] text-white py-5 rounded-[1.5rem] font-black uppercase tracking-[0.2em] shadow-xl hover:bg-blue-950 hover:-translate-y-1 transition-all disabled:opacity-20 disabled:translate-y-0"
+              className="w-full bg-[#1e3a8a] text-white py-5 rounded-[1.5rem] font-black uppercase tracking-[0.2em] shadow-xl hover:bg-blue-950 hover:-translate-y-1 transition-all disabled:opacity-50 disabled:translate-y-0"
             >
               {loading ? <Loader2 className="animate-spin mx-auto" /> : "Buat & Simpan"}
             </button>
@@ -387,6 +470,45 @@ export default function App() {
           <p className="text-[10px] font-bold text-slate-300 mt-[-2cm] uppercase tracking-widest">Ukuran PDF: 14cm x 17cm</p>
         </div>
       </div>
+
+	      {/* MODAL SUKSES */}
+      {validationErrors.length > 0 && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-[2.5rem] p-8 flex flex-col gap-5 shadow-2xl max-w-sm w-full">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-black text-slate-900 uppercase tracking-wide">Data Belum Lengkap</h2>
+                <p className="mt-2 text-sm font-medium text-slate-500">Lengkapi bagian berikut sebelum menyimpan.</p>
+              </div>
+              <button
+                onClick={() => setValidationErrors([])}
+                className="shrink-0 rounded-full bg-slate-100 p-2 text-slate-500 hover:bg-slate-200 transition"
+                aria-label="Tutup popup validasi"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="rounded-2xl bg-red-50 p-4">
+              <ul className="space-y-2">
+                {validationErrors.map((field) => (
+                  <li key={field} className="flex items-center gap-2 text-sm font-black text-red-700">
+                    <span className="h-2 w-2 rounded-full bg-red-500" />
+                    {field}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <button
+              onClick={() => setValidationErrors([])}
+              className="w-full bg-[#1e3a8a] text-white py-4 rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-blue-950 transition"
+            >
+              Mengerti
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* MODAL SUKSES */}
       {sukses && (

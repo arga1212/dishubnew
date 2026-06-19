@@ -8,6 +8,7 @@
 - Backend Node.js + Express menerima payload base64
 - Backend menyimpan file PDF/JPG ke disk dengan UUID acak
 - Backend mencatat referensi file ke CSV
+- Titik koordinat lokasi diambil dari izin lokasi browser dan ikut disimpan ke CSV
 - Frontend menyediakan halaman `/data` untuk melihat data dan reprint PDF
 - Endpoint upload dilindungi Bearer token (`Authorization: Bearer <token>`)
 
@@ -50,6 +51,10 @@ Body `POST /api/submissions`:
 - `nama`
 - `lokasiParkir`
 - `alamatParkir`
+- `latitude`
+- `longitude`
+- `locationAccuracy`
+- `locationCapturedAt`
 - `pdfBase64`
 - `fotoPetugasBase64`
 - `fotoRambuBase64`
@@ -72,4 +77,5 @@ npm run start
 Catatan:
 - Folder `server/uploads` tidak diexpose sebagai static route.
 - Gunakan reverse proxy (Nginx/Caddy) + HTTPS untuk keamanan transport data.
+- Izin lokasi browser umumnya membutuhkan HTTPS di production.
 - Untuk produksi, gunakan secret token panjang acak (minimal 32 karakter).

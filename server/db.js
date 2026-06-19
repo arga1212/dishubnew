@@ -22,11 +22,44 @@ const CSV_HEADERS = [
   'foto_rambu_filename',
   'foto_kta_filename',
   'created_at',
+  'latitude',
+  'longitude',
+  'location_accuracy',
+  'location_captured_at',
 ];
 
 export const initializeDatabase = () => {
   if (!fs.existsSync(csvPath)) {
     fs.writeFileSync(csvPath, `${CSV_HEADERS.join(',')}\n`, { encoding: 'utf8', mode: 0o600 });
+    return;
+  }
+
+  const raw = fs.readFileSync(csvPath, 'utf8');
+  const lines = raw.split(/\r?\n/);
+  const headerLine = lines[0] || '';
+
+  if (!headerLine.trim()) {
+    fs.writeFileSync(csvPath, `${CSV_HEADERS.join(',')}\n`, { encoding: 'utf8', mode: 0o600 });
+    return;
+  }
+
+  const existingHeaders = parseCsvLine(headerLine);
+  const missingHeaders = CSV_HEADERS.filter((header) => !existingHeaders.includes(header));
+
+  if (missingHeaders.length > 0) {
+    const migratedLines = lines.map((line, index) => {
+      if (index === 0) {
+        return [...existingHeaders, ...missingHeaders].map(escapeCsvValue).join(',');
+      }
+
+      if (!line) {
+        return line;
+      }
+
+      return `${line}${','.repeat(missingHeaders.length)}`;
+    });
+
+    fs.writeFileSync(csvPath, migratedLines.join('\n'), { encoding: 'utf8', mode: 0o600 });
   }
 };
 
@@ -98,6 +131,10 @@ export const insertSubmission = ({
   nama,
   lokasiParkir,
   alamatParkir,
+  latitude,
+  longitude,
+  locationAccuracy,
+  locationCapturedAt,
   pdfFilename,
   fotoPetugasFilename,
   fotoRambuFilename,
@@ -117,6 +154,10 @@ export const insertSubmission = ({
         fotoRambuFilename,
         fotoKtaFilename,
         createdAt,
+        latitude,
+        longitude,
+        locationAccuracy,
+        locationCapturedAt,
       ];
 
       const row = `${rowValues.map(escapeCsvValue).join(',')}\n`;

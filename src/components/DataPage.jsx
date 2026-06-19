@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, FileDown, RefreshCw, AlertCircle } from 'lucide-react';
+import { ArrowLeft, FileDown, RefreshCw, AlertCircle, MapPin } from 'lucide-react';
 
 export const DataPage = ({ apiBaseUrl, apiAuthToken }) => {
   const [items, setItems] = useState([]);
@@ -126,6 +126,8 @@ export const DataPage = ({ apiBaseUrl, apiAuthToken }) => {
     }
   };
 
+  const hasCoordinates = (item) => item.latitude && item.longitude;
+
   return (
     <div className="min-h-screen bg-slate-100 p-4 md:p-10 text-slate-900">
       <div className="max-w-6xl mx-auto space-y-6">
@@ -179,12 +181,13 @@ export const DataPage = ({ apiBaseUrl, apiAuthToken }) => {
 
           {!loading && !errorMessage && items.length > 0 && (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[1300px]">
+              <table className="w-full min-w-[1500px]">
                 <thead className="bg-slate-900 text-white text-xs uppercase tracking-widest">
                   <tr>
                     <th className="text-left px-4 py-3">Nama</th>
                     <th className="text-left px-4 py-3">Lokasi</th>
                     <th className="text-left px-4 py-3">Alamat</th>
+                    <th className="text-left px-4 py-3">Koordinat</th>
                     <th className="text-left px-4 py-3">File Petugas</th>
                     <th className="text-left px-4 py-3">File Rambu</th>
                     <th className="text-left px-4 py-3">File KTA</th>
@@ -198,6 +201,30 @@ export const DataPage = ({ apiBaseUrl, apiAuthToken }) => {
                       <td className="px-4 py-4 font-black text-blue-900">{item.nama}</td>
                       <td className="px-4 py-4 font-semibold text-slate-700">{item.lokasi_parkir}</td>
                       <td className="px-4 py-4 font-semibold text-slate-700">{item.alamat_parkir}</td>
+                      <td className="px-4 py-4">
+                        {hasCoordinates(item) ? (
+                          <div className="space-y-2">
+                            <div className="text-xs font-black text-slate-700">
+                              {Number(item.latitude).toFixed(6)}, {Number(item.longitude).toFixed(6)}
+                            </div>
+                            {item.location_accuracy && (
+                              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                Akurasi ±{Math.round(Number(item.location_accuracy))} m
+                              </div>
+                            )}
+                            <a
+                              href={`https://www.google.com/maps?q=${item.latitude},${item.longitude}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-700 px-3 py-2 rounded-lg text-xs font-black uppercase tracking-wider hover:bg-emerald-100 transition"
+                            >
+                              <MapPin size={14} /> Maps
+                            </a>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-slate-400 font-bold">-</span>
+                        )}
+                      </td>
                       <td className="px-4 py-4">
                         {item.foto_petugas_filename ? (
                           <a
